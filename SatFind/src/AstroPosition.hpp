@@ -25,14 +25,20 @@ SATFIND_NAMESPACE_BEGIN
 
 struct AstroObjectPositionBase {
   public:
-	AstroObjectPositionBase() { initialize(DateTime::now()); }
-	AstroObjectPositionBase(const DateTime& dt) { initialize(dt); }
-	void update(const DateTime& dt) { initialize(dt); }
+	AstroObjectPositionBase(const DateTime& dt) { initialize(dt, dt.deltaT()); }
+
+	AstroObjectPositionBase(const DateTime& dt, const TimeSpan& delta_t) { initialize(dt, delta_t); }
+
+	AstroObjectPositionBase() : AstroObjectPositionBase(DateTime::now()) {}
+
+	void update(const DateTime& dt, const TimeSpan& delta_t) { initialize(dt, delta_t); }
+	void update(const DateTime& dt) { initialize(dt, dt.deltaT()); }
+
 	const Eci& eci() const { return m_eci_position; }
 	const EclipticSpherical& ecliptic() const { return m_ecliptic_position; }
 
   private:
-	virtual void initialize(const DateTime& dt) { (void)dt; }
+	virtual void initialize(const DateTime& dt, const TimeSpan& delta_t) { (void)dt; }
 
   protected:
 	Eci m_eci_position;
@@ -47,22 +53,24 @@ struct AstroObjectPositionBase {
 class SunPosition : public AstroObjectPositionBase {
 
   public:
-	SunPosition() { initialize(DateTime::now()); }
+	SunPosition(const DateTime& dt, const TimeSpan& delta_t) { initialize(dt, delta_t); }
 
-	SunPosition(const DateTime& dt) { initialize(dt); }
+	SunPosition(const DateTime& dt) { initialize(dt, dt.deltaT()); }
 
-	Angle obliquity() const { return obliquity(m_ecliptic_position.epoch()); }
+	SunPosition() : SunPosition(DateTime::now()) {}
 
-	static Angle obliquity(const DateTime& dt) {
-		const double T = (dt.j2000() + dt.deltaT().totalDays()) / constant::jd_century; // Julian centuries since J2000
-		const double Omega = AngleHelper::degreeToWrapRadian(125.04 - 1934.136 * T);	// Longitude of ascending node
+	static Angle obliquity(const DateTime& dt, const TimeSpan& delta_t) {
+		const double T = (dt + delta_t).j2000() / constant::jd_century;				 // Julian centuries since J2000
+		const double Omega = AngleHelper::degreeToWrapRadian(125.04 - 1934.136 * T); // Longitude of ascending node
 		return Radian{AngleHelper::degreeToWrapRadian(23 + (26 + Polynomial::deg3(T, 21.448, 46.8150, 0.00059, -0.001813) / 60) / 60 +
 													  0.00256 * std::cos(Omega))}; // Obliquity of the ecliptic
 	}
 
+	static Angle obliquity(const DateTime& dt) { return obliquity(dt, dt.deltaT()); }
+
   private:
-	void initialize(const DateTime& dt) override {
-		const double T = (dt.j2000() + dt.deltaT().totalDays()) / constant::jd_century; // Julian centuries since J2000
+	void initialize(const DateTime& dt, const TimeSpan& delta_t) override {
+		const double T = (dt + delta_t).j2000() / constant::jd_century; // Julian centuries since J2000
 		const double L0 = AngleHelper::degreeToWrapRadian(Polynomial::deg2(T, 280.46646, 36000.76983, 0.0003032)); // Mean longitude
 		const double M = AngleHelper::degreeToWrapRadian(Polynomial::deg2(T, 357.52911, 35999.05029, -0.0001537)); // Mean anomaly
 		const double e = Polynomial::deg2(T, 0.016708634, -0.000042037, -0.0000001267);							   // Eccentricity
@@ -87,11 +95,14 @@ class SunPosition : public AstroObjectPositionBase {
  */
 class MoonPosition : public AstroObjectPositionBase {
   public:
-	MoonPosition() { initialize(DateTime::now()); }
-	MoonPosition(const DateTime& dt) { initialize(dt); }
+	MoonPosition(const DateTime& dt, const TimeSpan& delta_t) { initialize(dt, delta_t); }
+
+	MoonPosition(const DateTime& dt) { initialize(dt, dt.deltaT()); }
+
+	MoonPosition() : MoonPosition(DateTime::now()) {}
 
   private:
-	void initialize(const DateTime& dt) override {
+	void initialize(const DateTime& dt, const TimeSpan& delta_t) override {
 		const double T = (dt.j2000() + dt.deltaT().totalDays()) / constant::jd_century;					 // Julian centuries since J2000
 		const double L0 = AngleHelper::degreeToWrapRadian(Polynomial::deg1(T, 218.31617, 481267.88088)); // Mean longitude
 		const double l = AngleHelper::degreeToWrapRadian(Polynomial::deg1(T, 134.96292, 477198.86753));	 // Mean anomaly
