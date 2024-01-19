@@ -55,22 +55,19 @@ struct OrbitalElements {
 
   private:
 	void fromTle(const Tle& tle) {
-		/*
-		 * extract and format tle data
-		 */
-		mean_anomaly = AngleHelper::degreeToRadian(tle.meanAnomaly());
-		ascending_node = AngleHelper::degreeToRadian(tle.rightAscendingNode());
-		argument_perigee = AngleHelper::degreeToRadian(tle.argumentPerigee());
-		eccentricity = tle.eccentricity();
-		inclination = AngleHelper::degreeToRadian(tle.inclination());
-		mean_motion = tle.meanMotion() * constant::pi2 / constant::minutes_per_day;
-		b_star = tle.bStar();
-		epoch = tle.epoch();
-
-		/*
-		 * recover original mean motion (xnodp) and semimajor axis (aodp)
-		 * from input elements
-		 */
+		// TLEから抽出
+		{
+			mean_anomaly = AngleHelper::degreeToRadian(tle.meanAnomaly());
+			ascending_node = AngleHelper::degreeToRadian(tle.rightAscendingNode());
+			argument_perigee = AngleHelper::degreeToRadian(tle.argumentPerigee());
+			eccentricity = tle.eccentricity();
+			inclination = AngleHelper::degreeToRadian(tle.inclination());
+			mean_motion = tle.meanMotion() * constant::pi2 / constant::minutes_per_day;
+			b_star = tle.bStar();
+			epoch = tle.epoch();
+		}
+		
+		// original mean motion (xnodp), semimajor axis (aodp)
 		const double a1 = std::pow(constant::xke / mean_motion, constant::tow_third);
 		const double cosio = std::cos(inclination);
 		const double theta2 = cosio * cosio;
@@ -84,16 +81,7 @@ struct OrbitalElements {
 		const double del0 = temp / (a0 * a0);
 
 		recovered_mean_motion = mean_motion / (1.0 + del0);
-		/*
-		 * alternative way to calculate
-		 * doesnt affect final results
-		 * recovered_semi_major_axis_ = pow(XKE / RecoveredMeanMotion(), TWOTHIRD);
-		 */
 		recovered_semi_major_axis = a0 / (1.0 - del0);
-
-		/*
-		 * find perigee and period
-		 */
 		perigee = (recovered_semi_major_axis * (1.0 - eccentricity) - constant::ae) * constant::xkmper;
 		period = constant::pi2 / recovered_mean_motion;
 	}

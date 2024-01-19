@@ -91,7 +91,6 @@ class OrbitalPropagator {
 
 		/*
 		 * エポックでの月/太陽定数
-		 * applied during DeepSpaceSecular()
 		 */
 		double sse;
 		double ssi;
@@ -101,7 +100,6 @@ class OrbitalPropagator {
 
 		/*
 		 * 月/太陽定数
-		 * used during DeepSpaceCalculateLunarSolarTerms()
 		 */
 		double se2;
 		double si2;
@@ -128,9 +126,6 @@ class OrbitalPropagator {
 		double xh2;
 		double xh3;
 
-		/*
-		 * used during DeepSpaceCalcDotTerms()
-		 */
 		double d2201;
 		double d2211;
 		double d3210;
@@ -145,9 +140,6 @@ class OrbitalPropagator {
 		double del2;
 		double del3;
 
-		/*
-		 * integrator constants
-		 */
 		double xfact;
 		double xlamo;
 
@@ -217,12 +209,8 @@ class OrbitalPropagator {
 	}
 
 	void initialize() {
-		/* パラメータの初期化 */
 		clear();
 
-		/*
-		 * error checks
-		 */
 		if (m_elements.eccentricity < 0.0 || m_elements.eccentricity > 0.999) {
 			throw OrbitException("Eccentricity out of range", OrbitException::ParameterOutOfRange);
 		}
@@ -244,21 +232,12 @@ class OrbitalPropagator {
 		} else {
 			m_is_using_deep_space = false;
 			m_is_using_simple_model = false;
-			/*
-			 * for perigee less than 220 kilometers, the simple_model flag is set
-			 * and the equations are truncated to linear variation in sqrt a and
-			 * quadratic variation in mean anomly. also, the c3 term, the
-			 * delta omega term and the delta m term are dropped
-			 */
+
 			if (m_elements.perigee < 220.0) {
 				m_is_using_simple_model = true;
 			}
 		}
 
-		/*
-		 * for perigee below 156km, the values of
-		 * s4 and qoms2t are altered
-		 */
 		double s4 = constant::s;
 		double qoms24 = constant::qoms2t;
 		if (m_elements.perigee < 156.0) {
@@ -270,9 +249,6 @@ class OrbitalPropagator {
 			s4 = s4 / constant::xkmper + constant::ae;
 		}
 
-		/*
-		 * generate constants
-		 */
 		const double pinvsq = 1.0 / (m_elements.recovered_semi_major_axis * m_elements.recovered_semi_major_axis * betao2 * betao2);
 		const double tsi = 1.0 / (m_elements.recovered_semi_major_axis - s4);
 		m_common_constants.eta = m_elements.recovered_semi_major_axis * m_elements.eccentricity * tsi;
@@ -384,9 +360,6 @@ class OrbitalPropagator {
 		const double sing = std::sin(m_elements.argument_perigee);
 		const double cosg = std::cos(m_elements.argument_perigee);
 
-		/*
-		 * initialize lunar / solar terms
-		 */
 		const double jday = m_elements.epoch.j2000();
 
 		const double xnodce = AngleHelper::wrapRadian(4.5236020 - 9.2422029e-4 * jday);
@@ -408,9 +381,6 @@ class OrbitalPropagator {
 		const double zsingl = std::sin(zx);
 		m_deep_space_constants.zmos = AngleHelper::wrapRadian(6.2565837 + 0.017201977 * jday);
 
-		/*
-		 * do solar terms
-		 */
 		double zcosg = ZCOSGS;
 		double zsing = ZSINGS;
 		double zcosi = ZCOSIS;
@@ -423,9 +393,6 @@ class OrbitalPropagator {
 		const double xnoi = 1.0 / m_elements.recovered_mean_motion;
 
 		for (int cnt = 0; cnt < 2; cnt++) {
-			/*
-			 * solar terms are done a second time after lunar terms are done
-			 */
 			const double a1 = zcosg * zcosh + zsing * zcosi * zsinh;
 			const double a3 = -zsing * zcosh + zcosg * zcosi * zsinh;
 			const double a7 = -zcosg * zsinh + zsing * zcosi * zcosh;
@@ -475,12 +442,6 @@ class OrbitalPropagator {
 			sl = -zn * s3 * (z1 + z3 - 14.0 - 6.0 * eosq);
 			sgh = s4 * zn * (z31 + z33 - 6.0);
 
-			/*
-			 * replaced
-			 * sh = -zn * s2 * (z21 + z23
-			 * with
-			 * shdq = (-zn * s2 * (z21 + z23)) / sinio
-			 */
 			if (m_elements.inclination < 5.2359877e-2 || m_elements.inclination > constant::pi - 5.2359877e-2) {
 				shdq = 0.0;
 			} else {
@@ -503,9 +464,7 @@ class OrbitalPropagator {
 			if (cnt == 1) {
 				break;
 			}
-			/*
-			 * do lunar terms
-			 */
+
 			m_deep_space_constants.sse = se;
 			m_deep_space_constants.ssi = si;
 			m_deep_space_constants.ssl = sl;
@@ -543,9 +502,6 @@ class OrbitalPropagator {
 		m_deep_space_constants.shape = DeepSpaceConstants::OrbitShape::None;
 
 		if (m_elements.recovered_mean_motion < 0.0052359877 && m_elements.recovered_mean_motion > 0.0034906585) {
-			/*
-			 * 24h synchronous resonance terms initialisation
-			 */
 			m_deep_space_constants.shape = DeepSpaceConstants::OrbitShape::Synchonous;
 
 			const double g200 = 1.0 + eosq * (-2.5 + 0.8125 * eosq);
@@ -665,9 +621,6 @@ class OrbitalPropagator {
 		}
 
 		if (m_deep_space_constants.shape != DeepSpaceConstants::OrbitShape::None) {
-			/*
-			 * initialise integrator
-			 */
 			m_deep_space_constants.xfact = bfact - m_elements.recovered_mean_motion;
 			m_integrator_params.atime = 0.0;
 			m_integrator_params.xni = m_elements.recovered_mean_motion;
@@ -680,9 +633,7 @@ class OrbitalPropagator {
 										  const double sinio) -> CartesianOrbitalElements {
 		const double beta2 = 1.0 - e * e;
 		const double xn = constant::xke / std::pow(a, 1.5);
-		/*
-		 * long period periodics
-		 */
+
 		const double axn = e * std::cos(omega);
 		const double temp11 = 1.0 / (a * beta2);
 		const double xll = temp11 * xlcof * axn;
@@ -696,12 +647,8 @@ class OrbitalPropagator {
 		}
 
 		/*
-		 * solve keplers equation
-		 * - solve using Newton-Raphson root solving
-		 * - here capu is almost the mean anomoly
-		 * - initialise the eccentric anomaly term epw
-		 * - The fmod saves reduction of angle to +/-2pi in sin/cos() and prevents
-		 * convergence problems.
+		 * ニュートン・ラプソン法でケプラー方程式を解く
+		 * 収束しない場合は, 最大10回まで反復
 		 */
 		const double capu = std::fmod(xlt - xnode, constant::pi2);
 		double epw = capu;
@@ -711,9 +658,6 @@ class OrbitalPropagator {
 		double ecose = 0.0;
 		double esine = 0.0;
 
-		/*
-		 * sensibility check for N-R correction
-		 */
 		const double max_newton_naphson = 1.25 * std::fabs(std::sqrt(elsq));
 
 		bool kepler_running = true;
@@ -729,16 +673,9 @@ class OrbitalPropagator {
 			if (std::fabs(f) < 1.0e-12) {
 				kepler_running = false;
 			} else {
-				/*
-				 * 1st order Newton-Raphson correction
-				 */
 				const double fdot = 1.0 - ecose;
 				double delta_epw = f / fdot;
 
-				/*
-				 * 2nd order Newton-Raphson correction.
-				 * f / (fdot - 0.5 * d2f * f/fdot)
-				 */
 				if (i == 0) {
 					if (delta_epw > max_newton_naphson) {
 						delta_epw = max_newton_naphson;
@@ -749,15 +686,10 @@ class OrbitalPropagator {
 					delta_epw = f / (fdot + 0.5 * esine * delta_epw);
 				}
 
-				/*
-				 * Newton-Raphson correction of -F/DF
-				 */
 				epw += delta_epw;
 			}
 		}
-		/*
-		 * short period preliminary quantities
-		 */
+
 		const double temp21 = 1.0 - elsq;
 		const double pl = a * temp21;
 
@@ -778,9 +710,6 @@ class OrbitalPropagator {
 		const double sin2u = 2.0 * sinu * cosu;
 		const double cos2u = 2.0 * cosu * cosu - 1.0;
 
-		/*
-		 * update for short periodics
-		 */
 		const double temp41 = 1.0 / pl;
 		const double temp42 = constant::ck2 * temp41;
 		const double temp43 = temp42 * temp41;
@@ -793,7 +722,7 @@ class OrbitalPropagator {
 		const double rfdotk = rfdot + xn * temp42 * (x1mth2 * cos2u + 1.5 * x3thm1);
 
 		/*
-		 * orientation vectors
+		 * 方向ベクトルの計算
 		 */
 		const double sinuk = std::sin(uk);
 		const double cosuk = std::cos(uk);
@@ -809,8 +738,9 @@ class OrbitalPropagator {
 		const double vx = xmx * cosuk - cosnok * sinuk;
 		const double vy = xmy * cosuk - sinnok * sinuk;
 		const double vz = sinik * cosuk;
+
 		/*
-		 * position and velocity
+		 * 位置/速度ベクトルの計算
 		 */
 		const double x = rk * ux * constant::xkmper;
 		const double y = rk * uy * constant::xkmper;
@@ -853,26 +783,15 @@ class OrbitalPropagator {
 			double xndot = 0.0;
 			double xnddt = 0.0;
 			double xldot = 0.0;
-			/*
-			 * 1st condition (if tsince is less than one time step from epoch)
-			 * 2nd condition (if atime and
-			 *     tsince are of opposite signs, so zero crossing required)
-			 * 3rd condition (if tsince is closer to zero than
-			 *     atime, only integrate away from zero)
-			 */
+
 			if (std::fabs(tsince) < STEP || tsince * integ_params.atime <= 0.0 || std::fabs(tsince) < std::fabs(integ_params.atime)) {
-				// restart back at the epoch
 				integ_params.atime = 0.0;
-				// TODO: check
 				integ_params.xni = elements.recovered_mean_motion;
-				// TODO: check
 				integ_params.xli = ds_constants.xlamo;
 			}
 
 			bool running = true;
 			while (running) {
-				// always calculate dot terms ready for integration beginning
-				// from the start of the range which is 'atime'
 				if (ds_constants.shape == DeepSpaceConstants::OrbitShape::Synchonous) {
 					xndot = ds_constants.del1 * std::sin(integ_params.xli - FASX2) +
 							ds_constants.del2 * std::sin(2.0 * (integ_params.xli - FASX4)) +
@@ -881,7 +800,6 @@ class OrbitalPropagator {
 							2.0 * ds_constants.del2 * std::cos(2.0 * (integ_params.xli - FASX4)) +
 							3.0 * ds_constants.del3 * std::cos(3.0 * (integ_params.xli - FASX6));
 				} else {
-					// TODO: check
 					const double xomi = elements.argument_perigee + c_constants.omgdot * integ_params.atime;
 					const double x2omi = xomi + xomi;
 					const double x2li = integ_params.xli + integ_params.xli;
@@ -907,13 +825,10 @@ class OrbitalPropagator {
 				double ft = tsince - integ_params.atime;
 				if (std::fabs(ft) >= STEP) {
 					const double delt = (ft >= 0.0 ? STEP : -STEP);
-					// integrate by a full step ('delt'), updating the cached
-					// values for the new 'atime'
 					integ_params.xli = integ_params.xli + xldot * delt + xndot * STEP2;
 					integ_params.xni = integ_params.xni + xndot * delt + xnddt * STEP2;
 					integ_params.atime += delt;
 				} else {
-					// integrate by the difference 'ft' remaining
 					xn = integ_params.xni + xndot * ft + xnddt * ft * ft * 0.5;
 					const double xl_temp = integ_params.xli + xldot * ft + xndot * ft * ft * 0.5;
 
@@ -936,7 +851,6 @@ class OrbitalPropagator {
 		static const double ZNL = 1.5835218E-4;
 		static const double ZEL = 0.05490;
 
-		// calculate solar terms for time tsince
 		double zm = ds_constants.zmos + ZNS * tsince;
 		double zf = zm + 2.0 * ZES * std::sin(zm);
 		double sinzf = std::sin(zf);
@@ -949,7 +863,6 @@ class OrbitalPropagator {
 		const double sghs = ds_constants.sgh2 * f2 + ds_constants.sgh3 * f3 + ds_constants.sgh4 * sinzf;
 		const double shs = ds_constants.sh2 * f2 + ds_constants.sh3 * f3;
 
-		// calculate lunar terms for time tsince
 		zm = ds_constants.zmol + ZNL * tsince;
 		zf = zm + 2.0 * ZEL * std::sin(zm);
 		sinzf = std::sin(zf);
@@ -962,7 +875,6 @@ class OrbitalPropagator {
 		const double sghl = ds_constants.xgh2 * f2 + ds_constants.xgh3 * f3 + ds_constants.xgh4 * sinzf;
 		const double shl = ds_constants.xh2 * f2 + ds_constants.xh3 * f3;
 
-		// merge calculated values
 		const double pe = ses + sel;
 		const double pinc = sis + sil;
 		const double pl = sls + sll;
@@ -972,25 +884,14 @@ class OrbitalPropagator {
 		xinc += pinc;
 		em += pe;
 
-		/* Spacetrack report #3 has sin/cos from before perturbations
-		 * added to xinc (oldxinc), but apparently report # 6 has then
-		 * from after they are added.
-		 * use for strn3
-		 * if (elements_.Inclination() >= 0.2)
-		 * use for gsfc
-		 * if (xinc >= 0.2)
-		 * (moved from start of function)
-		 */
 		const double sinis = std::sin(xinc);
 		const double cosis = std::cos(xinc);
 
 		if (xinc >= 0.2) {
-			// apply periodics directly
 			omgasm += pgh - cosis * ph / sinis;
 			xnodes += ph / sinis;
 			xll += pl;
 		} else {
-			// apply periodics with lyddane modification
 			const double sinok = std::sin(xnodes);
 			const double cosok = std::cos(xnodes);
 			double alfdp = sinis * sinok;
@@ -1005,11 +906,7 @@ class OrbitalPropagator {
 			xls += dls;
 			const double oldxnodes = xnodes;
 			xnodes = std::atan2(alfdp, betdp);
-			/**
-			 * Get perturbed xnodes in to same quadrant as original.
-			 * RAAN is in the range of 0 to 360 degrees
-			 * atan2 is in the range of -180 to 180 degrees
-			 */
+
 			if (std::fabs(oldxnodes - xnodes) > constant::pi) {
 				if (xnodes < oldxnodes) {
 					xnodes += constant::pi2;
@@ -1024,9 +921,6 @@ class OrbitalPropagator {
 	}
 
 	auto propagateSdp4(const double t_min) -> CartesianOrbitalElements {
-		/*
-		 * the final values
-		 */
 		double e;
 		double a;
 		double omega;
@@ -1034,9 +928,6 @@ class OrbitalPropagator {
 		double xnode;
 		double xinc;
 
-		/*
-		 * update for secular gravity and atmospheric drag
-		 */
 		double xmdf = m_elements.mean_anomaly + m_common_constants.xmdot * t_min;
 		double omgadf = m_elements.argument_perigee + m_common_constants.omgdot * t_min;
 		const double xnoddf = m_elements.ascending_node + m_common_constants.xnodot * t_min;
@@ -1064,10 +955,6 @@ class OrbitalPropagator {
 
 		deepSpacePeriodics(t_min, m_deep_space_constants, e, xinc, omgadf, xnode, xmam);
 
-		/*
-		 * keeping xinc positive important unless you need to display xinc
-		 * and dislike negative inclinations
-		 */
 		if (xinc < 0.0) {
 			xinc = -xinc;
 			xnode += constant::pi;
@@ -1077,9 +964,6 @@ class OrbitalPropagator {
 		xl = xmam + omgadf + xnode;
 		omega = omgadf;
 
-		/*
-		 * fix tolerance for error recognition
-		 */
 		if (e <= -0.001) {
 			throw OrbitException("Error: (e <= -0.001)", OrbitException::ParameterOutOfRange);
 		} else if (e < 1.0e-6) {
@@ -1088,9 +972,6 @@ class OrbitalPropagator {
 			e = 1.0 - 1.0e-6;
 		}
 
-		/*
-		 * re-compute the perturbed values
-		 */
 		double perturbed_sinio;
 		double perturbed_cosio;
 		double perturbed_x3thm1;
@@ -1102,18 +983,12 @@ class OrbitalPropagator {
 		setConstantParameters(xinc, perturbed_sinio, perturbed_cosio, perturbed_x3thm1, perturbed_x1mth2, perturbed_x7thm1, perturbed_xlcof,
 							  perturbed_aycof);
 
-		/*
-		 * using calculated values, find position and velocity
-		 */
 		return calclateCartesianOrbitalElements(m_elements.epoch.addMinutes(t_min), e, a, omega, xl, xnode, xinc, perturbed_xlcof,
 												perturbed_aycof, perturbed_x3thm1, perturbed_x1mth2, perturbed_x7thm1, perturbed_cosio,
 												perturbed_sinio);
 	}
 
 	auto propagateSgp4(const double t_min) -> CartesianOrbitalElements {
-		/*
-		 * the final values
-		 */
 		double e;
 		double a;
 		double omega;
@@ -1121,9 +996,6 @@ class OrbitalPropagator {
 		double xnode;
 		const double xinc = m_elements.inclination;
 
-		/*
-		 * update for secular gravity and atmospheric drag
-		 */
 		const double xmdf = m_elements.mean_anomaly + m_common_constants.xmdot * t_min;
 		const double omgadf = m_elements.argument_perigee + m_common_constants.omgdot * t_min;
 		const double xnoddf = m_elements.ascending_node + m_common_constants.xnodot * t_min;
@@ -1158,9 +1030,6 @@ class OrbitalPropagator {
 		e = m_elements.eccentricity - tempe;
 		xl = xmp + omega + xnode + m_elements.recovered_mean_motion * templ;
 
-		/*
-		 * fix tolerance for error recognition
-		 */
 		if (e <= -0.001) {
 			throw OrbitException("Eccentricity is out of range", OrbitException::EccentricityOutOfRange);
 		} else if (e < 1.0e-6) {
@@ -1169,10 +1038,6 @@ class OrbitalPropagator {
 			e = 1.0 - 1.0e-6;
 		}
 
-		/*
-		 * using calculated values, find position and velocity
-		 * we can pass in constants from Initialise() as these dont change
-		 */
 		return calclateCartesianOrbitalElements(m_elements.epoch.addMinutes(t_min), e, a, omega, xl, xnode, xinc, m_common_constants.xlcof,
 												m_common_constants.aycof, m_common_constants.x3thm1, m_common_constants.x1mth2,
 												m_common_constants.x7thm1, m_common_constants.cosio, m_common_constants.sinio);
