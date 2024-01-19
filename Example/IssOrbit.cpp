@@ -1,7 +1,8 @@
 /**
  * @file IssOrbit.cpp
  * @author fugu133
- * @brief
+ * @brief ISSの軌道位置を計算する
+ * @details ISSの軌道位置(WGS84)を計算し，CSVファイルに出力する
  * @version 0.1
  * @date 2024-01-19
  *
