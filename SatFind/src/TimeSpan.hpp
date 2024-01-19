@@ -1,6 +1,6 @@
 /**
  * @file TimeSpan.hpp
- * @author fugu133 (fugu0220@gmail.com)
+ * @author fugu133 (@fugumarine)
  * @brief 時間の長さを表すクラス
  * @remarks 最小単位はマイクロ秒
  * @version 0.1

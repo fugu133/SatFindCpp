@@ -1,6 +1,6 @@
 /**
  * @file AngleHelper.hpp
- * @author fugu133 (fugu0220@gmail.com)
+ * @author fugu133 (@fugumarine)
  * @brief
  * @version 0.1
  * @date 2023-12-01
