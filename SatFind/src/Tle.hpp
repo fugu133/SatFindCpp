@@ -430,12 +430,20 @@ class Tle {
 		int divider = 1;
 		int pointer = 0;
 
-		enum { SignPart, IntegerPart, DecimalPart, FractionPart, ExponentialPart } state = SignPart;
+		enum { SpacePart, SignPart, IntegerPart, DecimalPart, FractionPart, ExponentialPart } state = SpacePart;
 
 		while (pointer < (int)str.length()) {
 			const auto c = str[pointer];
 
 			switch (state) {
+				case SpacePart:
+					if (c == ' ') {
+						pointer++;
+					} else {
+						state = SignPart;
+					}
+					break;
+
 				case SignPart:
 					if (c == '-') {
 						sign_part = -1;
@@ -507,6 +515,7 @@ class Tle {
 			return sign_part * ((double)integer_part + (double)decimal_part / (double)divider);
 		}
 	}
+
 
 	DateTime toDateTime(const std::string& str) {
 		std::int32_t year;
